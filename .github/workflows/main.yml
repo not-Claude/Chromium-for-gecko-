@@ -7,6 +7,9 @@ on:
     branches: [ "main", "master" ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     name: Build APK
@@ -25,23 +28,28 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
-      # Проверка и генерация gradlew (если файла ещё нет в репозитории)
-      - name: Ensure Gradle Wrapper
+      # Генерируем Gradle Wrapper нужной версии (9.3.1) и задаём права на запуск
+      - name: Generate & Ensure Gradle Wrapper 9.3.1
         run: |
-          if [ ! -f "./gradlew" ]; then
-            gradle wrapper --gradle-version 8.7
-          fi
+          gradle wrapper --gradle-version 9.3.1 --distribution-type bin
           chmod +x gradlew
+
+      # Сохраняем обновлённый wrapper в репозиторий (чтобы не пересобирать заново каждый раз)
+      - name: Commit updated Gradle Wrapper
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "build: update Gradle wrapper to 9.3.1"
+          file_pattern: "gradlew gradlew.bat gradle/wrapper/*"
 
       # Сборка Debug APK
       - name: Build Debug APK
         run: ./gradlew assembleDebug --stacktrace
 
-      # Сохранение APK в артефактах сборки GitHub
-      - name: Upload APK
+      # Выгрузка собранного APK в артефакты GitHub
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug.apk
+          name: app-debug
           path: app/build/outputs/apk/debug/*.apk
           retention-days: 7
           
