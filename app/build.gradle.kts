@@ -20,6 +20,13 @@ android {
     versionName = "1.0"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+    // Ограничиваем архитектуры процессора (arm64 для телефонов, x86_64 для эмуляторов).
+    // Это снижает гигантский вес бинарников GeckoView в несколько раз.
+    ndk {
+      abiFilters.clear()
+      abiFilters.addAll(listOf("arm64-v8a", "x86_64"))
+    }
   }
 
   signingConfigs {
@@ -31,10 +38,13 @@ android {
       keyPassword = System.getenv("KEY_PASSWORD")
     }
     create("debugConfig") {
-      storeFile = file("${rootDir}/debug.keystore")
-      storePassword = "android"
-      keyAlias = "androiddebugkey"
-      keyPassword = "android"
+      val debugKeystoreFile = file("${rootDir}/debug.keystore")
+      if (debugKeystoreFile.exists()) {
+        storeFile = debugKeystoreFile
+        storePassword = "android"
+        keyAlias = "androiddebugkey"
+        keyPassword = "android"
+      }
     }
   }
 
@@ -45,17 +55,33 @@ android {
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
       signingConfig = signingConfigs.getByName("release")
     }
-    debug { signingConfig = signingConfigs.getByName("debugConfig") }
+    debug {
+      // Использовать custom debugConfig только если debug.keystore действительно создан
+      if (file("${rootDir}/debug.keystore").exists()) {
+        signingConfig = signingConfigs.getByName("debugConfig")
+      }
+
+      // Удаляем отладочные символы из C++ библиотек GeckoView, уменьшая размер APK
+      packaging {
+        jniLibs {
+          keepDebugSymbols.clear()
+        }
+      }
+    }
   }
+  
   compileOptions {
     sourceCompatibility = JavaVersion.VERSION_11
     targetCompatibility = JavaVersion.VERSION_11
   }
+  
   buildFeatures {
     compose = true
     buildConfig = true
   }
+  
   testOptions { unitTests { isIncludeAndroidResources = true } }
+  
   dependenciesInfo {
     includeInApk = false
     includeInBundle = true
@@ -72,8 +98,6 @@ secrets {
 
 googleServices { missingGoogleServicesStrategy = MissingGoogleServicesStrategy.WARN }
 
-// Some unused dependencies are commented out below instead of being removed.
-// This makes it easy to add them back in the future if needed.
 dependencies {
   implementation(platform(libs.androidx.compose.bom))
   implementation(platform(libs.firebase.bom))
