@@ -28,13 +28,20 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
-      # Генерируем Gradle Wrapper нужной версии (9.3.1) и задаём права на запуск
+      # Генерируем Gradle Wrapper 9.3.1
       - name: Generate & Ensure Gradle Wrapper 9.3.1
         run: |
           gradle wrapper --gradle-version 9.3.1 --distribution-type bin
           chmod +x gradlew
 
-      # Сохраняем обновлённый wrapper в репозиторий (чтобы не пересобирать заново каждый раз)
+      # Создаём дефолтный debug.keystore прямо перед сборкой
+      - name: Create Debug Keystore
+        run: |
+          if [ ! -f "debug.keystore" ]; then
+            keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          fi
+
+      # Сохраняем обновлённый wrapper в репозиторий
       - name: Commit updated Gradle Wrapper
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
@@ -45,7 +52,7 @@ jobs:
       - name: Build Debug APK
         run: ./gradlew assembleDebug --stacktrace
 
-      # Выгрузка собранного APK в артефакты GitHub
+      # Выгрузка APK в артефакты GitHub
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
