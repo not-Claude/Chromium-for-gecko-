@@ -25,34 +25,24 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Setup Gradle
+      # Официальный экшен сам скачает Gradle 9.3.1 с авто-повторами и кэшированием
+      - name: Setup Gradle 9.3.1
         uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '9.3.1'
 
-      # Генерируем Gradle Wrapper 9.3.1
-      - name: Generate & Ensure Gradle Wrapper 9.3.1
-        run: |
-          gradle wrapper --gradle-version 9.3.1 --distribution-type bin
-          chmod +x gradlew
-
-      # Создаём дефолтный debug.keystore прямо перед сборкой
+      # Создаём debug.keystore, если он отсутствует в репозитории
       - name: Create Debug Keystore
         run: |
           if [ ! -f "debug.keystore" ]; then
             keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
           fi
 
-      # Сохраняем обновлённый wrapper в репозиторий
-      - name: Commit updated Gradle Wrapper
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: "build: update Gradle wrapper to 9.3.1"
-          file_pattern: "gradlew gradlew.bat gradle/wrapper/*"
-
-      # Сборка Debug APK
+      # Запускаем сборку через установленный системный Gradle (обходит обрывы загрузки в gradlew)
       - name: Build Debug APK
-        run: ./gradlew assembleDebug --stacktrace
+        run: gradle assembleDebug --stacktrace
 
-      # Выгрузка APK в артефакты GitHub
+      # Выгрузка скомпилированного APK в артефакты
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
