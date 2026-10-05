@@ -1,0 +1,6 @@
+{
+  "name": "Chrome Gecko",
+  "description": "Быстрый браузер на движке Gecko с интерфейсом Chrome и поддержкой расширений Chrome Web Store",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
